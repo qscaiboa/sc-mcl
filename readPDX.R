@@ -82,7 +82,7 @@ if(!"mixed" %in% colnames(a))
  }
 
 print(a)
-if ((ncol(a))>1 &  (a$mouse[2]> 1)) {
+if  (a$mouse[2]> 1) {
 
   fileDIRm = paste(workDIRm, samplename, "/outs/filtered_feature_bc_matrix", sep="")
   Data_tmp_m<-Read10X(data.dir = fileDIRh )
