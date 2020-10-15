@@ -67,22 +67,21 @@ print(nrow(data.frame(table( cell_species$species))))
   # dev.off()
   #######################################
 
-a <- data.frame(t(data.frame(table( cell_species$species))))
-colnames(a) <- a[1,]
-print(a$mouse)
+
+a <- data.frame(t(as.matrix(table( cell_species$species))) )
+if(!"mixed" %in% colnames(a))
+ {
+   a$mixed <- 0
+ }
 
 if(!"mouse" %in% colnames(a))
  {
    a$mouse <- c("mouse",0)
  }
 
-if(!"mixed" %in% colnames(a))
- {
-   a$mixed <- c("mixed",0)
- }
 
 print(a)
-if  (a$mouse[2]> 1) {
+if  (a$mouse> 1) {
 
   fileDIRm = paste(workDIRm, samplename, "/outs/filtered_feature_bc_matrix", sep="")
   Data_tmp_m<-Read10X(data.dir = fileDIRh )
