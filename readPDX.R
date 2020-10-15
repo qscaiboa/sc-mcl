@@ -76,7 +76,7 @@ if(!"mixed" %in% colnames(a))
 
 if(!"mouse" %in% colnames(a))
  {
-   a$mouse <- c("mouse",0)
+   a$mouse <- 0
  }
 
 
