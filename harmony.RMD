@@ -1,0 +1,533 @@
+---
+title: "Untitled"
+output: html_document
+---
+```{r}
+#install.packages("Seurat")
+remove.packages('reticulate')
+library(reticulate)
+remove.packages('Seurat')
+
+install.packages('Seurat')
+
+library(Seurat)
+```
+
+```{r}
+library(Seurat)
+library(ggplot2)
+library(readr)
+library(readxl)
+library(Matrix)
+library(tidyr)
+library(dplyr)
+library(readxl)
+library(cowplot)
+#library(harmony)
+outputDIR = "/data/exx/SC/SC145/Figure.CQS"
+
+
+list.files()
+
+
+```
+
+```{r}
+samplePDX <- read_xlsx("/home/qcai1/Downloads/SC145/PDX_scRNA_WES_info.xlsx", sheet = 1)
+unique(as.character(samplePDX$scSeqName))
+data.frame(samplePDX)
+```
+```{r}
+workDIR = "/data/exx/SC/SC145/scPDX_10X_human/"  
+allSampleName = list.files(workDIR)
+
+initialSampleName = "S10"
+allSampleName = allSampleName[!allSampleName %in% initialSampleName]
+
+
+fileDIR1 = paste(workDIR, initialSampleName, "/outs/filtered_feature_bc_matrix", sep="")  #S10
+Data_tmp<-Read10X(data.dir = fileDIR1)
+
+
+Object1 <- CreateSeuratObject(counts = Data_tmp, project = initialSampleName, min.cells = 3, min.features=200)
+Object1
+
+i <- initialSampleName
+
+
+Object1@meta.data$Pt <-    samplePDX[samplePDX$scSeqName %in% i,]$Pt   ######################################
+Object1@meta.data$sample <-    samplePDX[samplePDX$scSeqName %in% i,]$scSeqName
+Object1@meta.data$Newname <-    samplePDX[samplePDX$scSeqName %in% i,]$Newname
+Object1@meta.data$HumanMouse <-    samplePDX[samplePDX$scSeqName %in% i,]$HumanMouse
+Object1@meta.data$PDXmodel <-    samplePDX[samplePDX$scSeqName %in% i,]$PDXmodel
+
+Object1[["percent.mt"]] <- PercentageFeatureSet(Object1, pattern = "^MT-")
+outputName12 = paste0(outputDIR,"/qc/", initialSampleName, ".VlnPlot_before_filter.png")
+                                                      #pp = CombinePlots(plots = list(plot1, plot2))
+png(outputName12,height =480, width = 960) 
+print(VlnPlot(Object1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+dev.off()
+
+Object1 <- NormalizeData(Object1)
+Object1 <- FindVariableFeatures(Object1, selection.method = "vst", nfeatures= 2000)
+Object1 <- ScaleData(Object1)
+
+Object1 <- subset(Object1, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 10)
+Object1
+
+outputName12 = paste0(outputDIR,"/qc/", initialSampleName, ".VlnPlot_after.png")
+png(outputName12,height =480, width = 960)  
+print(VlnPlot(Object1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+dev.off()
+
+```
+
+```{r, echo=False}
+Object.combined = c()
+for ( i in allSampleName ) {
+    print(i)
+    j = i
+    fileDIR2 = paste(workDIR, i, "/outs/filtered_feature_bc_matrix", sep="")
+    Data_tmp<-Read10X(data.dir = fileDIR2)
+    Object32 <- CreateSeuratObject(counts = Data_tmp, project = j)
+    
+Object32@meta.data$Pt <-    samplePDX[samplePDX$scSeqName %in% i,]$Pt   ######################################
+Object32@meta.data$sample <-    samplePDX[samplePDX$scSeqName %in% i,]$scSeqName
+Object32@meta.data$Newname <-    samplePDX[samplePDX$scSeqName %in% i,]$Newname 
+Object32@meta.data$HumanMouse <-    samplePDX[samplePDX$scSeqName %in% i,]$HumanMouse
+Object32@meta.data$PDXmodel <-    samplePDX[samplePDX$scSeqName %in% i,]$PDXmodel
+
+Object32[["percent.mt"]] <- PercentageFeatureSet(Object32, pattern = "^MT-")
+   outputName12 = paste0(outputDIR,"/qc/", i, ".VlnPlot_before_filter.png")
+    png(outputName12,height =480, width = 960)
+       print(VlnPlot(Object32, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3))
+    dev.off()
+
+Object32 <- NormalizeData(Object32)
+Object32 <- FindVariableFeatures(Object32, selection.method = "vst", nfeatures= 2000)
+Object32 <- ScaleData(Object32)
+
+Object32 <- subset(Object32, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 10)
+Object32    
+
+outputName12 = paste0(outputDIR,"/qc/", i, ".VlnPlot_after.png")
+png(outputName12,height =480, width = 960) 
+print(VlnPlot(Object32, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3) )
+dev.off() 
+   Object.combined = c(Object.combined, Object32)
+
+  }
+```
+
+```{r}
+#c("A","B","D")
+  Object.all <- merge(Object1, y =   Object.combined, add.cell.ids =c(initialSampleName, allSampleName)  , project = "SC145")
+  Object.all <- NormalizeData(object = Object.all, verbose = FALSE)
+  Object.all <- ScaleData(Object.all)
+  Object.all <- FindVariableFeatures(object = Object.all, selection.method = "vst", nfeatures = 2000)
+  Object.all <- RunPCA(Object.all, features = VariableFeatures(object = Object.all))
+  saveRDS(Object.all, "/data/exx/SC/SC145/Data/Object1.CQS.rds")
+
+```
+
+```{r}
+Objectall <- readRDS( "/data/exx/SC/SC145/Data/Object1.CQS.rds")
+Objectall<- Object.all
+Objectall <- RunHarmony(Objectall, "sample")
+Objectall <- ScaleData(Objectall,verbose = FALSE)
+Objectall <- RunUMAP(Objectall, reduction = "harmony", dims = 1:30)
+Objectall <- FindNeighbors(Objectall, reduction = "harmony", dims = 1:30)
+Objectall <- FindClusters(Objectall, resolution = 0.5)
+saveRDS(Objectall, "/data/exx/SC/SC145/Data/Hamed.CQS.rds")
+
+```
+
+```{r}
+Objectall <- readRDS( "Hamed.CQS.rds")
+```
+
+
+```{r}
+Objectall <- RunTSNE(Objectall, reduction = "harmony", dims = 1:30)
+#Objectall <- FindNeighbors(Objectall, reduction = "harmony", dims = 1:30)
+#Objectall <- FindClusters(Objectall, resolution = 0.5)
+saveRDS(Objectall, "Hamed.CQS.2.rds")
+```
+
+```{r,fig.height=10, fig.width= 10}
+#str(Objectall)
+#Objectall <- readRDS( "Hamed.CQS.2.rds")
+
+dim(Objectall@meta.data)
+samplePDX[,c("Finalname","scSeqName")]
+Objectall@meta.data 
+#dim(merge(Objectall@meta.data, samplePDX[,c("Finalname","scSeqName")], by.x="sample", by.y="scSeqName"))
+Objectall@meta.data$row <- rownames(Objectall@meta.data)
+Objectall@meta.data 
+#Objectall@meta.data <-
+ a <- merge(Objectall@meta.data, samplePDX[,c("Finalname","scSeqName")], by.x="sample", by.y="scSeqName")
+ a
+rownames(a) <- a$row
+a
+Objectall@meta.data <- a
+```
+
+```{r, fig.height=10, fig.width= 10, echo=FALSE, warning=FALSE, message=FALSE}}
+p1 <- DimPlot(Objectall, reduction = "tsne", label = TRUE)
+print(p1)
+```
+
+```{r,fig.height=12, fig.width= 12}
+FeaturePlot(Objectall, features = c("CD79A", "CD79B","NKG7", "GNLY","S100A9", "HBB", "ZNF90","MCL1",
+                                    "HIST1H4C", "TUBA1B", "TUBB", "PCLAF","TYMS"),reduction = "tsne", min.cutoff = "q9")
+```
+
+
+```{r,fig.height=55, fig.width= 18}
+#cc_file <- getURL("https://raw.githubusercontent.com/hbc/tinyatlas/master/cell_cycle/Homo_sapiens.csv") 
+cell_cycle_genes <- read.csv("Homo_sapiens.csv")
+library(AnnotationHub)
+library(ensembldb)
+# Connect to AnnotationHub
+ah <- AnnotationHub()
+
+# Access the Ensembl database for organism
+ahDb <- query(ah, 
+              pattern = c("Homo sapiens", "EnsDb"), 
+              ignore.case = TRUE)
+
+# Acquire the latest annotation files
+id <- ahDb %>%
+        mcols() %>%
+        rownames() %>%
+        tail(n = 1)
+
+# Download the appropriate Ensembldb database
+edb <- ah[[id]]
+
+# Extract gene-level information from database
+annotations <- genes(edb, 
+                     return.type = "data.frame")
+
+# Select annotations of interest
+annotations <- annotations %>%
+        dplyr::select(gene_id, gene_name, seq_name, gene_biotype, description)
+
+# Get gene names for Ensembl IDs for each gene
+cell_cycle_markers <- dplyr::left_join(cell_cycle_genes, annotations, by = c("geneID" = "gene_id"))
+
+# Acquire the S phase genes
+s_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "S") %>%
+        pull("gene_name")
+        
+# Acquire the G2M phase genes        
+g2m_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "G2/M") %>%
+        pull("gene_name")
+```
+
+
+```{r}
+# Perform cell cycle scoring
+Objectall <- CellCycleScoring(Objectall,
+                                   g2m.features = g2m_genes,
+                                   s.features = s_genes)
+
+# Perform PCA and color by cell cycle phase
+#Objectall <- RunPCA(Objectall)
+
+# Visualize the PCA, grouping by cell cycle phase
+
+DimPlot(Objectall,
+        reduction = "tsne",
+        group.by= "Phase")
+DimPlot(Objectall,
+        reduction = "umap",
+        group.by= "Phase")
+```
+
+
+```{r, fig.height=10, fig.width= 18}
+#p1 <- DimPlot(Objectall, reduction = "umap", group.by = "sample")
+p1 <- DimPlot(Objectall, reduction = "tsne", group.by = "Finalname")
+
+print(p1)
+```
+
+```{r,fig.height=55, fig.width= 18}
+#DimPlot(Objectall, reduction = "tsne", split.by = "sample", label = TRUE, ncol =4)
+DimPlot(Objectall, reduction = "tsne", split.by = "Finalname", label = TRUE, ncol =4)
+```
+
+```{r, fig.height=10, fig.width= 10, echo=FALSE, warning=FALSE, message=FALSE}}
+p1 <- DimPlot(Objectall, reduction = "umap", label = TRUE)
+print(p1)
+```
+
+Show in New WindowClear OutputExpand/Collapse Output
+Registered S3 methods overwritten by 'htmltools':
+  method               from         
+  print.html           tools:rstudio
+  print.shiny.tag      tools:rstudio
+  print.shiny.tag.list tools:rstudio
+Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+Registered S3 method overwritten by 'htmlwidgets':
+  method           from         
+  print.htmlwidget tools:rstudio
+package ‘ggplot2’ was built under R version 3.6.3package ‘readr’ was built under R version 3.6.3package ‘readxl’ was built under R version 3.6.3package ‘Matrix’ was built under R version 3.6.3
+Attaching package: ‘Matrix’
+
+The following object is masked from ‘package:S4Vectors’:
+
+    expand
+
+package ‘tidyr’ was built under R version 3.6.3
+Attaching package: ‘tidyr’
+
+The following objects are masked from ‘package:Matrix’:
+
+    expand, pack, unpack
+
+The following object is masked from ‘package:S4Vectors’:
+
+    expand
+
+package ‘cowplot’ was built under R version 3.6.3
+********************************************************
+Note: As of version 1.0.0, cowplot does not change the
+  default ggplot2 theme anymore. To recover the previous
+  behavior, execute:
+  theme_set(theme_cowplot())
+********************************************************
+
+[1] "all.markers.rds"         "all.markers.txt"         "Hamed.CQS.rds"           "harmony.Rmd"             "PDX_scRNA_WES_info.xlsx" "seurat.yaml"            
+Show in New WindowClear OutputExpand/Collapse Output
+New names:                                                                                                                                                                                                                                      
+* scRNA -> scRNA...6
+* scRNA -> scRNA...19
+  [1] "964301-B0"                  "964303-B1"                  "1106365-B4"                 "1106365"                    "B00  (1106365 TID CD19(-))" "249479-4-Liver"             "249479-4-LN"                "249479-4-Tumor"            
+  [9] "249479-4-Spleen"            "249479-4-Stomach"           "285861-1-Tumor"             "285908-2-Tumor"             "285861-1-Spleen"            "318819-2-tumor"             "T7"                         "S7"                        
+ [17] "398322-Tumor"               "398326-Tumor"               "407347-scTumor"             "439205-1-Tumor"             "439205-2-Tumor"             "181834-3-Liver"             "181834-3-Tumor"             "1818343-Spleen"            
+ [25] "181834-4-Spleen"            "181834-3-Spleen"            "181834-3-Stomach"           "249471-4-BM"                "249472-1-BM"                "249471-4-Liv"               "249472-1-Liv"               "249469-1-Liver"            
+ [33] "249471-4-PB"                "249472-1-PB"                "249474-1-Spleen"            "249471-4-spl"               "249472-1-Spl"               "249469-1-Spleen"            "249469-1-Stomach"           "249480-spleen"             
+ [41] "285875-1-Spleen"            NA                           "286194-1-spleen"            "347720-1-spleen"            "S10"                        "382632-1-spleen"            "407348-Spleen"              "1215665"                   
+ [49] "1216276"                    "318796-2-BM"                "318796-2-Liver"             "T3"                         "S3"                         "ST3"                        "382611-1-BM"                "382611-1-Liver"            
+ [57] "382611-1-LN"                "382611-1-Spleen"            "1227142"                    "1228722"                    "312275-2-Tumor"             "382596-4-Tumor"             "382596-4-Spleen"            "347796-3-Tumor"            
+ [65] "347795-Tumor"               "407359-4-BM"                "407359-4-Liver"             "407321-1-Tumor"             "407324-scTumor"             "407359-3-Tumor"             "407359-4-Spleen"            "439216-tumor"              
+ [73] "318871-2-Liver"             "T6"                         "318871-2-Spleen"            "1245334"                    "1245334-CD3-T-cells"        "347793-2-BM"                "347793-2-Liver"             "347793-2-Tumor"            
+ [81] "347793-2-Spleen"            "1246565"                    "1247166-saliva"             "347797-2-BM"                "347797-2-Liver"             "347797-2-Spleen"            "347797-2-Uterus"            "382636-Spleen"             
+ [89] "1264446"                    "1301991-saliva"             "407289-4-BM"                "407289-4-Liver"             "407289-4-Tumor"             "407289-4-Spleen"            "PBMC-1"                     "PBMC-2"                    
+ [97] "407348-Blood"               "407348-BM"                  "407348-Liver"               "347795-Blood"              
+R Console
+WESinformation
+<chr>
+NA	
+NA	
+Shaojun has for PT scRNA project MRN 2011102; TID 1106365	
+WES Batch 1	
+Shaojun has for PT scRNA project	
+WES Batch 2	
+WES Batch 2	
+WES Batch 2	
+WES Batch 2	
+WES Batch 2	
+Next123456...11Previous
+1-10 of 102 rows | 1-1 of 20 columns
+data.frame
+102 x 20
+WESinformation
+<chr>
+SMFname
+<chr>
+Oldname
+<chr>
+scSeqName
+<chr>
+Finalname
+<chr>
+scRNA...6
+<chr>
+old_Samplename
+<chr>
+NA	NA	NA	964301-B0	A00	scRNA	NA	
+NA	NA	NA	964303-B1	A01	scRNA	NA	
+Shaojun has for PT scRNA project MRN 2011102; TID 1106365	NA	B4	1106365-B4	A0	scRNA	B4 (1106365 TID)	
+WES Batch 1	NA	PT_1106365	1106365	A0	NA	1106365	
+Shaojun has for PT scRNA project	NA	B00	B00 (1106365 TID CD19(-))	A0-germline	NA	B00 (1106365 TID CD19(-))	
+WES Batch 2	PDX_24	NA	249479-4-Liver	AS_G2_LI	NA	249479-4-Liver	
+WES Batch 2	PDX_22	NA	249479-4-LN	AS_G2_LN	NA	249479-4-LN	
+WES Batch 2	PDX_7	NA	249479-4-Tumor	AS_G2_SC	scRNA	249479-4-Tumor	
+WES Batch 2	PDX_21	NA	249479-4-Spleen	AS_G2_SP	scRNA	249479-4-Spleen	
+WES Batch 2	PDX_23	NA	249479-4-Stomach	AS_G2_ST	NA	249479-4-Stomach	
+Next123456...11Previous
+1-10 of 102 rows | 1-7 of 20 columns
+Show in New WindowClear OutputExpand/Collapse Output
+
+
+```{r, fig.height=10, fig.width= 18}
+#p1 <- DimPlot(Objectall, reduction = "umap", group.by = "sample")
+p1 <- DimPlot(Objectall, reduction = "umap", group.by = "Finalname")
+
+print(p1)
+```
+```{r, fig.height=15, fig.width= 20}
+p1 <- DimPlot(Objectall, reduction = "umap", group.by = "Pt")
+print(p1)
+```
+
+```{r}
+#all.markers  <- FindAllMarkers(Objectall, only.pos = T, min.pct = 0.01, logfc.threshold = 0.25)
+#saveRDS(all.markers,"/data/exx/SC/SC145/Data/all.markers.rds")
+#write.table(all.markers, "/data/exx/SC/SC145/Figure.CQS/all.markers.txt")
+all.markers <- readRDS("all.markers.rds")
+```
+
+```{r,fig.height=55, fig.width= 18}
+DimPlot(Objectall, reduction = "umap", split.by = "sample", label = TRUE, ncol =4)
+DimPlot(Objectall, reduction = "umap", split.by = "Finalname", label = TRUE, ncol =4)
+```
+c("LTB", "CD79A", "CD79B", "CD52", "CD37", 
+                "HIST1H4C", "TUBA1B", "TUBB", "PCLAF","TYMS",
+  "PKM", "GNLY", "NKG7", "SAA1", "ZNF90", "CCL3", "S100A9", "S100A8", "HIST3H2A", "HBB", "HBD")
+#RidgePlot(Objectall, features = features, ncol = 3)
+
+```{r,fig.height=8, fig.width= 10}
+for (i in 0:15) {
+features <- all.markers[all.markers$cluster %in% i,]$gene[1:10]
+print(DotPlot(Objectall, features = features) + RotatedAxis())
+}
+
+
+```
+
+```{r,fig.height=8, fig.width= 10}
+features <- all.markers[all.markers$cluster %in% "1",]$gene[1:10]
+DotPlot(Objectall, features = features) + RotatedAxis()
+```
+
+```{r,fig.height=8, fig.width= 10}
+features <- all.markers[all.markers$cluster %in% "2",]$gene[1:10]
+DotPlot(Objectall, features = features) + RotatedAxis()
+```
+
+Bcell gene
+```{r,fig.height=5, fig.width= 5}
+FeaturePlot(Objectall, features = c("CD79A", "CD79B","GZMA", "MS4A1"), min.cutoff = "q9")
+```
+
+```{r,fig.height=12, fig.width= 12}
+FeaturePlot(Objectall, features = c("CD79A", "CD79B","NKG7", "GNLY","S100A9", "HBB", "ZNF90","MCL1",
+                                    "HIST1H4C", "TUBA1B", "TUBB", "PCLAF","TYMS"), min.cutoff = "q9")
+```
+
+
+
+```{r,fig.height=55, fig.width= 18}
+#cc_file <- getURL("https://raw.githubusercontent.com/hbc/tinyatlas/master/cell_cycle/Homo_sapiens.csv") 
+cell_cycle_genes <- read.csv("Homo_sapiens.csv")
+library(AnnotationHub)
+library(ensembldb)
+# Connect to AnnotationHub
+ah <- AnnotationHub()
+
+# Access the Ensembl database for organism
+ahDb <- query(ah, 
+              pattern = c("Homo sapiens", "EnsDb"), 
+              ignore.case = TRUE)
+
+# Acquire the latest annotation files
+id <- ahDb %>%
+        mcols() %>%
+        rownames() %>%
+        tail(n = 1)
+
+# Download the appropriate Ensembldb database
+edb <- ah[[id]]
+
+# Extract gene-level information from database
+annotations <- genes(edb, 
+                     return.type = "data.frame")
+
+# Select annotations of interest
+annotations <- annotations %>%
+        dplyr::select(gene_id, gene_name, seq_name, gene_biotype, description)
+```
+```{r}
+# Get gene names for Ensembl IDs for each gene
+cell_cycle_markers <- dplyr::left_join(cell_cycle_genes, annotations, by = c("geneID" = "gene_id"))
+
+# Acquire the S phase genes
+s_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "S") %>%
+        pull("gene_name")
+        
+# Acquire the G2M phase genes        
+g2m_genes <- cell_cycle_markers %>%
+        dplyr::filter(phase == "G2/M") %>%
+        pull("gene_name")
+```
+
+
+```{r}
+# Perform cell cycle scoring
+Objectall <- CellCycleScoring(Objectall,
+                                   g2m.features = g2m_genes,
+                                   s.features = s_genes)
+
+# Perform PCA and color by cell cycle phase
+#Objectall <- RunPCA(Objectall)
+
+# Visualize the PCA, grouping by cell cycle phase
+DimPlot(Objectall,
+        reduction = "umap",
+        group.by= "Phase")
+```
+
+```{r, fig.height=55, fig.width= 18}
+DimPlot(Objectall,
+        reduction = "umap",
+        group.by= "Phase", split.by = "Finalname", ncol= 4)
+
+```
+
+
+features <- c("GNLY", "NKG7")
+RidgePlot(Objectall, features = features, ncol = 2)
+```
+
+
+#for anchoring
+pdx.list <- SplitObject(Object.all, split.by = "sample")
+saveRDS(pdx.list, file = "/data/exx/SC/SC145/Data/0.pdx.list.rds")
+
+for (i in 1:length(pdx.list)) {
+    pdx.list[[i]] <- NormalizeData(pdx.list[[i]], verbose = FALSE)
+    pdx.list[[i]] <- FindVariableFeatures(pdx.list[[i]], selection.method = "vst", nfeatures = 2000, verbose = FALSE)
+}
+
+pdx.anchors <- FindIntegrationAnchors(object.list = pdx.list, dims = 1:30)
+saveRDS(pdx.anchors, file= "/data/exx/SC/SC145/Data/1.pdx.anchors.rds")
+
+```
+
+```{r}
+pdx.anchors <- readRDS("/data/exx/SC/SC145/Data/1.pdx.anchors.rds")
+
+```
+```{r}
+library(future)
+plan("multiprocess", workers =4)
+pdx.integrated <- IntegrateData(anchorset = pdx.anchors, dims = 1:30)          
+saveRDS(pdx.integrated, file= "/data/exx/SC/SC145/Data/2.pdx.integrated.rds")
+
+
+
+```
+
+
+
+
+
