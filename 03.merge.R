@@ -15,7 +15,7 @@ dataDir  =  "/rsrch3/scratch/lym_myl_rsch/qcai1/SC145/Data.RDS/"
 figureDIR =  "/rsrch3/scratch/lym_myl_rsch/qcai1/SC145/Figures/"
 workDIR = "/rsrch3/scratch/lym_myl_rsch/qcai1/SC145/10XMH/" 
 
-samplePDX <- read_xlsx("/rsrch3/home/lym_myl_rsch/MCL_Lab/more_data_from_linghua/from_Shaojun/Vivian/scPDX/sampleInfo/PDX_scRNA_WES_info.xlsx", sheet = 1)
+samplePDX <- read_xlsx("scRNA_WES_info.xlsx", sheet = 1)
 unique(as.character(samplePDX$scSeqName))
 samplePDX <- data.frame(samplePDX)
 
