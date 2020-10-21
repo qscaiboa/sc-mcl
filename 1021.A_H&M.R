@@ -21,7 +21,7 @@ library(cowplot)
 
  Objectall <- readRDS("./Data/Object.merged_updated.rds")
  Apt <- subset(Objectall, subset = Pt %in% c("A","P"))
- Apt <- subset(Apt, subset = species %in% "human")
+ #Apt <- subset(Apt, subset = species %in% "human")
  Apt <- NormalizeData(object = Apt, normalization.method = "LogNormalize", scale.factor = 10000)  #, verbose = FALSE)
  Apt <- FindVariableFeatures(object = Apt, selection.method = "vst", nfeatures = 2000)
  Apt <- ScaleData(Apt,verbose = FALSE)
