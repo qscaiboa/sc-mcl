@@ -80,7 +80,7 @@ saveRDS (Apt, file= "./Data/Object.PatientA&PBMC.RDS")
  
  
  #Apt <- readRDS("./Data/Object.PatientA&PBMC.harmony.RDS")
- #png("ZZZ.1020_Apt.harmony.umap.species.png", width = 900, height = 600)
+ #png("ZZZ.1020_Apt.harmony.umap.species.png", width = 600, height = 600)
  #DimPlot(Apt, reduction = "umap", label = TRUE, group.by= "species")
  #dev.off()
  
@@ -104,7 +104,7 @@ saveRDS (Apt, file= "./Data/Object.PatientA&PBMC.harmony.RDS")
  DimPlot(Apt, reduction = "umap", label = TRUE, group.by= "Pt")
  dev.off()
  
- png("ZZZ.1020_Apt.harmony.umap.species.png", width = 900, height = 600)
+ png("ZZZ.1020_Apt.harmony.umap.species.png", width = 600, height = 600)
  DimPlot(Apt, reduction = "umap", label = TRUE, group.by= "species")
  dev.off()
  
@@ -120,11 +120,7 @@ saveRDS (Apt, file= "./Data/Object.PatientA&PBMC.harmony.RDS")
  png("ZZZ.1020.Apt.harmony.umap.splitbyFinalname.png", width = 1200, height = 800)
  DimPlot(Apt, reduction = "umap", label = TRUE, split.by= "Finalname", ncol=8)
  dev.off()
- 
   
-
- 
- 
  png("ZZZ.1020_Apt.harmony.umap.FeaturePlot.PBMC.png", width = 1200, height = 800)
  FeaturePlot(Apt, features = c("IL7R", "CCR7",
                                "S100A4",
